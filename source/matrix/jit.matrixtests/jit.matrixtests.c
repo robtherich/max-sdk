@@ -42,13 +42,17 @@ t_jit_err jit_matrixtests_matrix_calc(t_jit_matrixtests *x, void *inputs, void *
 	long i,j, k, width, height, planecount;
 	void *out_matrix;
 
+	// get out output matrix
 	out_matrix 	= jit_object_method(outputs,_jit_sym_getindex,0);
 
 	if (x && out_matrix) {
+		// lock the output matrix
 		out_savelock = (long) jit_object_method(out_matrix,_jit_sym_lock,1);
 
+		// get the matrix info
 		jit_object_method(out_matrix,_jit_sym_getinfo,&out_minfo);
 
+		// get the matrix data pointer
 		jit_object_method(out_matrix,_jit_sym_getdata,&out_bp);
 
 		if (!out_bp) { err=JIT_ERR_INVALID_OUTPUT; goto out;}
@@ -57,15 +61,36 @@ t_jit_err jit_matrixtests_matrix_calc(t_jit_matrixtests *x, void *inputs, void *
 		height = out_minfo.dim[1];
 		planecount = out_minfo.planecount;
 
+		// switch codepath based on matrix type
 		if (out_minfo.type == _jit_sym_char) {
+			// iterate the rows
 			for (i = 0; i < height; i++) {
+				// char output pointer
 				uchar *cop;
+
+				// set the pointer to the address of the current row
 				cop = (uchar*)(out_bp + i * out_minfo.dimstride[1]);
+
+				// iterate the columns
+				for(j = 0; j < width; j++) {
+					// iterate the planes
+					for(k = 0; k < planecount; k++) {
+						// set the value to the current column (will create horizontal gradient)
+						*cop = j;
+						cop++;
+					}
+				}
+			}
+		}
+		else if (out_minfo.type == _jit_sym_long) {
+			for (i = 0; i < height; i++) {
+				t_int32 *lop;
+				lop = (t_int32*)(out_bp + i * out_minfo.dimstride[1]);
 
 				for(j = 0; j < width; j++) {
 					for(k = 0; k < planecount; k++) {
-						*cop = j;
-						cop++;
+						*lop = j;
+						lop++;
 					}
 				}
 			}
@@ -79,6 +104,19 @@ t_jit_err jit_matrixtests_matrix_calc(t_jit_matrixtests *x, void *inputs, void *
 					for(k = 0; k < planecount; k++) {
 						*fop = ((float)j) / 255.;
 						fop++;
+					}
+				}
+			}
+		}
+		else if (out_minfo.type == _jit_sym_float64) {
+			for (i = 0; i < height; i++) {
+				double *dop;
+				dop = (double*)(out_bp + i * out_minfo.dimstride[1]);
+
+				for(j = 0; j < width; j++) {
+					for(k = 0; k < planecount; k++) {
+						*dop = ((double)j) / 255.;
+						dop++;
 					}
 				}
 			}
